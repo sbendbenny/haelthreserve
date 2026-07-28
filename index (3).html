@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>115年興達發電廠健康檢查預約系統</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, sans-serif;
+        background: linear-gradient(135deg, #e8f5e9 0%, #f4f7f6 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 40px 20px;
+    }
+    .page { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 20px; }
+    .form-container, .query-container {
+        background: white;
+        padding: 36px 32px;
+        border-radius: 12px;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+        width: 100%;
+    }
+    .header {
+        text-align: center;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e8f5e9;
+    }
+    .header h1 { font-size: 20px; color: #1b5e20; font-weight: 700; line-height: 1.6; }
+    .header p  { font-size: 13px; color: #777; margin-top: 6px; }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; color: #333; font-size: 14px; }
+    .required { color: #e53935; margin-left: 2px; }
+    input[type="text"], input[type="tel"], input[type="email"], input[type="date"], select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color .2s;
+        background: white;
+        font-family: inherit;
+    }
+    input:focus, select:focus {
+        outline: none;
+        border-color: #43a047;
+        box-shadow: 0 0 0 3px rgba(67,160,71,.12);
+    }
+    select:disabled { background: #f5f5f5; color: #aaa; cursor: not-allowed; }
+    .checkbox-group, .radio-group { border: 1px solid #ccc; border-radius: 6px; padding: 12px 16px; }
+    .checkbox-group label, .radio-group label {
+        font-weight: normal; display: flex; align-items: center;
+        gap: 8px; margin-bottom: 9px; color: #444; cursor: pointer; font-size: 14px;
+    }
+    .checkbox-group label:last-child, .radio-group label:last-child { margin-bottom: 0; }
+    .checkbox-group input[type="checkbox"], .radio-group input[type="radio"] {
+        width: 16px; height: 16px; cursor: pointer; accent-color: #43a047; flex-shrink: 0;
+    }
+    .checkbox-group input[type="checkbox"]:disabled {
+        cursor: not-allowed; accent-color: #43a047; opacity: 1;
+    }
+    .checkbox-group label:has(input:disabled) { cursor: not-allowed; color: #333; }
+    .radio-group { display: flex; gap: 20px; }
+    .slot-info { border-radius: 6px; padding: 10px 14px; font-size: 13px; margin-top: 6px; }
+    .slot-ok   { background: #f1f8e9; border: 1px solid #aed581; color: #33691e; }
+    .slot-full { background: #fce4ec; border: 1px solid #f48fb1; color: #880e4f; }
+    .slot-load { background: #f5f5f5; border: 1px solid #e0e0e0; color: #888; }
+    .hint { font-size: 12px; color: #f57c00; margin-top: 5px; }
+    hr.divider { border: none; border-top: 1px dashed #e0e0e0; margin: 20px 0; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    button[type="submit"], .query-btn {
+        width: 100%; padding: 13px; background: #43a047; color: white;
+        border: none; border-radius: 6px; font-size: 16px; font-weight: 700;
+        cursor: pointer; margin-top: 8px; transition: background .2s; letter-spacing: 2px;
+    }
+    button[type="submit"]:hover:not(:disabled), .query-btn:hover:not(:disabled) { background: #388e3c; }
+    button[type="submit"]:disabled, .query-btn:disabled { background: #bdbdbd; cursor: not-allowed; }
+    .query-container h2 { font-size: 16px; color: #1b5e20; margin-bottom: 16px; }
+    .query-row { display: flex; gap: 10px; }
+    .query-row input { flex: 1; }
+    .query-row button { width: auto; padding: 10px 18px; margin-top: 0; }
+    .query-result { margin-top: 16px; font-size: 14px; }
+    .query-result table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .query-result th, .query-result td {
+        border: 1px solid #e0e0e0; padding: 8px 10px; font-size: 13px; text-align: left;
+    }
+    .query-result th { background: #f1f8e9; color: #1b5e20; }
+    .query-empty { color: #888; font-size: 13px; margin-top: 8px; }
+
+    /* ── 預約成功後彈出的「健康檢查注意事項及流程表」視窗 ── */
+    .modal-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.55);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 88vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+        background: #1b5e20;
+        color: white;
+        padding: 18px 24px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+        position: sticky; top: 0;
+    }
+    .modal-header h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    .modal-header p { font-size: 13px; opacity: 0.9; }
+    .modal-body { padding: 20px 24px; }
+    .confirm-box {
+        background: #f1f8e9; border: 1px solid #aed581; border-radius: 8px;
+        padding: 14px 16px; margin-bottom: 18px; font-size: 14px; color: #33691e;
+    }
+    .confirm-box div { margin-bottom: 4px; }
+    .confirm-box div:last-child { margin-bottom: 0; }
+    .modal-section { margin-bottom: 18px; }
+    .modal-section h3 {
+        font-size: 15px; color: #1565c0; margin-bottom: 8px;
+        border-bottom: 2px solid #e3f2fd; padding-bottom: 6px;
+    }
+    .modal-section ol, .modal-section ul { padding-left: 20px; }
+    .modal-section li { font-size: 13px; color: #333; margin-bottom: 6px; line-height: 1.5; }
+    .modal-section a { color: #1565c0; word-break: break-all; }
+    .modal-qr { text-align: center; margin: 10px 0 4px; }
+    .modal-qr img { width: 130px; height: 130px; border: 1px solid #e0e0e0; border-radius: 6px; }
+    .modal-qr p { font-size: 12px; color: #888; margin-top: 4px; }
+    .modal-footer { padding: 14px 24px 22px; text-align: center; }
+    .modal-footer button {
+        width: 100%; padding: 12px; background: #43a047; color: white;
+        border: none; border-radius: 6px; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .modal-footer button:hover { background: #388e3c; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="form-container">
+    <div class="header">
+        <h1>115年興達發電廠<br>健康檢查預約系統</h1>
+        <p>每日上午可預約，每日上限 29 人，額滿自動關閉</p>
+    </div>
+
+    <form id="bookingForm">
+
+        <div class="form-group">
+            <label for="empCode">姓名代號<span class="required">*</span></label>
+            <input type="text" id="empCode" required placeholder="請輸入姓名代號">
+        </div>
+
+        <div class="form-group">
+            <label for="empName">姓名<span class="required">*</span></label>
+            <input type="text" id="empName" required placeholder="請輸入真實姓名">
+        </div>
+
+        <div class="form-group">
+            <label for="idnum">身分證字號<span class="required">*</span></label>
+            <input type="text" id="idnum" required maxlength="10" placeholder="例：A123456789">
+        </div>
+
+        <div class="two-col">
+            <div class="form-group">
+                <label for="birth">出生年月日<span class="required">*</span></label>
+                <input type="date" id="birth" required>
+            </div>
+            <div class="form-group">
+                <label>性別<span class="required">*</span></label>
+                <div class="radio-group">
+                    <label><input type="radio" name="gender" value="男" required> 男</label>
+                    <label><input type="radio" name="gender" value="女"> 女</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="two-col">
+            <div class="form-group">
+                <label for="phone">行動電話<span class="required">*</span></label>
+                <input type="tel" id="phone" required placeholder="例：0912345678">
+            </div>
+            <div class="form-group">
+                <label for="email">電子郵件<span class="required">*</span></label>
+                <input type="email" id="email" required placeholder="例：name@mail.com">
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="form-group">
+            <label for="group">組別<span class="required">*</span></label>
+            <select id="group" required>
+                <option value="">請選擇組別</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="dept">課別<span class="required">*</span></label>
+            <select id="dept" required disabled>
+                <option value="">請先選擇組別</option>
+            </select>
+        </div>
+
+        <hr class="divider">
+
+        <div class="form-group">
+            <label>檢查項目（依人員名單自動帶出，無法手動修改）<span class="required">*</span></label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="items" value="高溫健康檢查" disabled> 高溫健康檢查</label>
+                <label><input type="checkbox" name="items" value="粉塵健康檢查" disabled> 粉塵健康檢查</label>
+                <label><input type="checkbox" name="items" value="噪音健康檢查" disabled> 噪音健康檢查</label>
+                <label><input type="checkbox" name="items" value="一般健康檢查" disabled> 一般健康檢查</label>
+            </div>
+            <div class="hint" id="rosterHint">請先填寫姓名代號與姓名，系統將自動帶出應施作的檢查項目</div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="form-group">
+            <label for="date">預約日期<span class="required">*</span></label>
+            <select id="date" required>
+                <option value="">請選擇日期</option>
+            </select>
+            <div id="slotInfo" style="display:none;"></div>
+            <div class="hint" id="slotHint"></div>
+        </div>
+
+        <button type="submit" id="submitBtn" disabled>送出預約</button>
+    </form>
+</div>
+
+<div class="query-container">
+    <h2>🔍 查詢我的預約紀錄(姓名代號開頭為0者，需省略0，如：012305，輸入12305)</h2>
+    <div class="query-row">
+        <input type="text" id="queryCode" placeholder="請輸入姓名代號，若無代號請輸入姓名">
+        <button type="button" class="query-btn" id="queryBtn">查詢</button>
+    </div>
+    <div class="query-result" id="queryResult"></div>
+</div>
+
+</div>
+
+<!-- 預約成功後彈出的健康檢查注意事項及流程表 -->
+<div class="modal-overlay" id="noticeModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2>台灣電力公司 興達發電廠</h2>
+            <p>115年健康檢查注意事項及流程表</p>
+        </div>
+        <div class="modal-body">
+            <div class="confirm-box" id="confirmBox"></div>
+
+            <div class="modal-section">
+                <h3>檢查資訊</h3>
+                <ol>
+                    <li>體檢地點：天主教聖功醫院 3F 健檢中心（新大樓）</li>
+                    <li>院址：高雄市苓雅區建國一路 352 號</li>
+                    <li>服務時間：週一至週五，上午 08:00－11:00</li>
+                    <li>預約專線：07-2255263 ext 222 或 220</li>
+                    <li>體檢日期及報到時間：請按您預約之時段報到</li>
+                    <li>
+                        煩請到院前完成線上健康問卷填寫，請複製網址或掃描 QR Code：<br>
+                        <a href="http://61.216.58.20/MobileRegister/" target="_blank" rel="noopener">http://61.216.58.20/MobileRegister/</a>
+                        <div class="modal-qr">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=http%3A%2F%2F61.216.58.20%2FMobileRegister%2F" alt="勞工問卷 QR Code">
+                            <p>勞工問卷</p>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="modal-section">
+                <h3>注意事項</h3>
+                <ol>
+                    <li>體檢前請至少空腹 8 小時。</li>
+                    <li>平時如有高血壓、心臟病、糖尿病之用藥，請持續服用（檢查當日請告知）。</li>
+                    <li>檢查前三天體檢前請勿熬夜、勿喝酒。</li>
+                    <li>特殊情況：如妊娠期請避免 X 光檢查，女性請避開經期或先告知醫護人員，可以日後補做。</li>
+                    <li>請儘量穿著寬鬆衣服受檢，勿穿戴金屬飾的衣物，以免造成 X 光拍攝之不便。</li>
+                    <li>體檢報到完，會請您到指定關卡後，電腦會依您未受檢項目與現場各項目人數，去決定您下一關要去哪（醫護人員也會告知）。</li>
+                </ol>
+            </div>
+
+            <div class="modal-section">
+                <h3>交通資訊</h3>
+                <ul>
+                    <li>高雄火車站：可以坐 88 號公車，在道明中學門口下車（車程 8-15 分鐘）。</li>
+                    <li>捷運：橘線 O7 文化中心站 3 號出入口。</li>
+                    <li>開車：本院位於市區且鄰近高速公路交流道，本院地下停車場。</li>
+                </ul>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" id="noticeModalCloseBtn">我已了解，關閉視窗</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ─────────────────────────────────────────────────────────
+    // ⚙ 請將下方替換成你的 Google Apps Script Web App URL
+    // ─────────────────────────────────────────────────────────
+    const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxxswn-JV96GfQ58FSoWfU0hOTPbuZ1O80E8SADr2JjQ0InmK8rK9KWIbvDpfW6d4KF/exec";
+
+    // ====== 指定可預約日期（民國115年 = 西元2026年） ======
+    const AVAILABLE_DATES = [
+        "2026-09-30",
+        "2026-10-02",
+        "2026-10-07","2026-10-08","2026-10-12","2026-10-13",
+        "2026-10-14","2026-10-15","2026-10-16",
+        "2026-10-20","2026-10-21","2026-10-22","2026-10-23",
+        "2026-10-27","2026-10-28","2026-10-29","2026-10-30"
+    ];
+
+    // ====== 含噪音／粉塵／高溫任一檢查項目者，僅開放此日期（含）以前預約 ======
+    const SPECIAL_ITEM_DATE_LIMIT = "2026-10-15";
+    const SPECIAL_ITEMS = ["高溫健康檢查", "粉塵健康檢查", "噪音健康檢查"];
+    let currentItemRestriction = false; // 目前這位受檢人是否受到上述日期限制
+
+    const WEEKDAY_NAMES = ["日","一","二","三","四","五","六"];
+    const SLOT_VALUE    = "上午場";
+    const CAPACITY      = 29; // 預設名額（僅作為前端顯示的備援值，實際名額以後端回傳的 result.capacity 為準）
+
+    // ====== 組別與課別對應表 ======
+    const DEPT_MAP = {
+        "運轉一組":       ["運轉一課","運轉二課","效率課","經理"],
+        "運轉二組":       ["運轉課","效率課","品核課","經理"],
+        "汽力機組值班":   ["汽力A班","汽力B班","汽力C班","汽力D班"],
+        "複循環機組值班": ["複循環機組值班A班","複循環機組值班B班","複循環機組值班C班","複循環機組值班D班"],
+        "新複循環值班":   ["新複循環值班A班","新複循環值班B班","新複循環值班C班","新複循環值班D班"],
+        "煤場值班":       ["煤場值班A班","煤場值班B班","煤場值班C班","煤場值班D班"],
+        "氣渦組":         ["氣渦一課","氣渦二課","經理"],
+        "熱機組":         ["熱機一課","熱機二課","熱機三課","熱機四課","經理"],
+        "鍋爐組":         ["廢熱鍋爐課","鍋爐主機課","鍋爐輔機課","鍋爐FGD","經理"],
+        "汽機組":         ["汽機主機課","汽機輔機課","複汽課","經理"],
+        "電氣一組":       ["電器一課","電器二課","變電一課","電機(一)課","電機(二)課","變電二課","電氣課","經理"],
+        "電氣二組":       ["電器課","變電課","電機課","經理"],
+        "儀資一組":       ["儀資一課","儀資二課","儀資三課","儀資四課","儀資六課","經理"],
+        "儀資二組":       ["複儀一課","複儀二課","複儀三課","複儀四課","複儀五課","經理"],
+        "儀資三組":       ["儀資一課","儀資二課","儀資三課","儀資四課","經理"],
+        "修配組":         ["修配課","土木一課","土木二課","共設一課","共設二課","經理"],
+        "機械組":         ["共同設備課","廢熱鍋爐課","土木課","修配課","經理"],
+        "環保一組":       ["水處理課","環保一課","環保二課","經理"],
+        "環保二組":       ["化學課","環保課","水處理課","生態課","環境教育推廣課","經理"],
+        "工安組":         ["工安一課","工安二課","工安三課","工安四課","經理"],
+        "供應組":         ["總務課","管理課","事務管理課","材料一課","材料二課","材料三課","採購課","公關課","經理"],
+        "會計組":         ["編審課","本成本課","資材課","複循環編審課","經理"],
+        "人資組":         ["人力運用課","人力發展課","經理"],
+        "政風組":         ["政風查核課","經理"],
+        "儲運組":         ["碼頭營運課","燃料營運課","皮帶機械課","堆取煤機課","經理"]
+    };
+
+    // ── 組別初始化 ──
+    const groupSelect = document.getElementById('group');
+    Object.keys(DEPT_MAP).forEach(g => {
+        const o = document.createElement('option');
+        o.value = g; o.textContent = g;
+        groupSelect.appendChild(o);
+    });
+
+    // ── 組別 → 課別 ──
+    const deptSelect = document.getElementById('dept');
+    groupSelect.addEventListener('change', () => {
+        const g = groupSelect.value;
+        deptSelect.innerHTML = '';
+        if (!g) {
+            deptSelect.disabled = true;
+            deptSelect.innerHTML = '<option value="">請先選擇組別</option>';
+            return;
+        }
+        deptSelect.disabled = false;
+        const ph = document.createElement('option');
+        ph.value = ''; ph.textContent = '請選擇課別';
+        deptSelect.appendChild(ph);
+        DEPT_MAP[g].forEach(d => {
+            const o = document.createElement('option');
+            o.value = d; o.textContent = d;
+            deptSelect.appendChild(o);
+        });
+    });
+
+    // ── 依姓名代號（若空則以姓名）比對人員名單，自動帶出建議檢查項目 ──
+    const empCodeInput = document.getElementById('empCode');
+    const empNameInput = document.getElementById('empName');
+    const itemCheckboxes = document.querySelectorAll('input[name="items"]');
+    const rosterHint = document.getElementById('rosterHint');
+    let lastRosterQuery = '';
+
+    async function lookupRosterAndFill() {
+        const code = empCodeInput.value.trim();
+        const name = empNameInput.value.trim();
+        if (!code || !name) {
+            rosterHint.style.color = '#f57c00';
+            rosterHint.textContent = '請先填寫姓名代號與姓名，系統將自動帶出應施作的檢查項目';
+            itemCheckboxes.forEach(cb => { cb.checked = false; });
+            return;
+        }
+
+        const key = code + '|' + name;
+        if (key === lastRosterQuery) return;
+        lastRosterQuery = key;
+
+        rosterHint.style.color = '#888';
+        rosterHint.textContent = '比對人員名單中...';
+
+        try {
+            const params = new URLSearchParams();
+            params.set('action', 'lookupPerson');
+            params.set('code', code);
+            params.set('name', name);
+            const res    = await fetch(`${GOOGLE_SHEET_URL}?${params.toString()}`);
+            const result = await res.json();
+
+            if (result.status === 'success') {
+                itemCheckboxes.forEach(cb => {
+                    cb.checked = result.match.items.includes(cb.value);
+                });
+
+                const hasSpecial = result.match.items.some(it => SPECIAL_ITEMS.includes(it));
+                const restrictionChanged = (hasSpecial !== currentItemRestriction);
+                currentItemRestriction = hasSpecial;
+
+                rosterHint.style.color = '#2e7d32';
+                rosterHint.textContent = `✅ 已依人員名單自動帶入 ${result.match.name} 應施作的檢查項目`;
+                if (hasSpecial) {
+                    rosterHint.textContent += `（含噪音／粉塵／高溫項目，僅開放 ${SPECIAL_ITEM_DATE_LIMIT}（含）以前之日期預約）`;
+                }
+
+                // 若限制狀態有變動，需重新篩選日期下拉選單，並清空已選日期避免選到不再開放的日期
+                if (restrictionChanged) {
+                    dateSelect.value = '';
+                    slotInfo.style.display = 'none';
+                    submitBtn.disabled = true;
+                    loadAllSlots();
+                }
+            } else if (result.status === 'notfound') {
+                itemCheckboxes.forEach(cb => { cb.checked = false; });
+                rosterHint.style.color = '#e53935';
+                rosterHint.textContent = '⚠ ' + result.message;
+                alert('⚠ ' + result.message);
+                if (currentItemRestriction) {
+                    currentItemRestriction = false;
+                    loadAllSlots();
+                }
+            }
+        } catch (err) {
+            // 查詢失敗不阻擋填寫，僅略過自動帶入
+            rosterHint.style.color = '#e53935';
+            rosterHint.textContent = '名單查詢失敗，請重新確認姓名代號與姓名後再試一次';
+        }
+    }
+
+    empCodeInput.addEventListener('blur', lookupRosterAndFill);
+    empNameInput.addEventListener('blur', lookupRosterAndFill);
+
+    // ── 日期下拉：一開始先全部列出，並於載入完成後查詢名額，額滿的日期自動移除 ──
+    const dateSelect = document.getElementById('date');
+    const slotInfo   = document.getElementById('slotInfo');
+    const slotHint   = document.getElementById('slotHint');
+    const submitBtn  = document.getElementById('submitBtn');
+
+    function buildDateOptions(fullDatesSet) {
+        dateSelect.innerHTML = '<option value="">請選擇日期</option>';
+        AVAILABLE_DATES.forEach(ds => {
+            if (fullDatesSet.has(ds)) return; // 額滿日期自動消失
+            if (currentItemRestriction && ds > SPECIAL_ITEM_DATE_LIMIT) return; // 含噪音/粉塵/高溫者，超過限制日期不開放
+            const d   = new Date(ds + "T00:00:00");
+            const day = WEEKDAY_NAMES[d.getDay()];
+            const o   = document.createElement('option');
+            o.value = ds;
+            o.textContent = `${ds} (${day})`;
+            dateSelect.appendChild(o);
+        });
+    }
+
+    async function loadAllSlots() {
+        // 先列出全部日期，避免查詢期間表單空白
+        buildDateOptions(new Set());
+        try {
+            const res    = await fetch(`${GOOGLE_SHEET_URL}?action=checkAllSlots&dates=${AVAILABLE_DATES.join(',')}`);
+            const result = await res.json();
+            if (result.status === "success") {
+                const fullDates = new Set();
+                Object.keys(result.slots).forEach(ds => {
+                    if (result.slots[ds].full) fullDates.add(ds);
+                });
+                buildDateOptions(fullDates);
+            }
+        } catch (err) {
+            // 查詢失敗時仍保留完整日期清單，讓使用者可繼續操作，
+            // 實際名額將於選擇日期時再次確認
+        }
+    }
+    loadAllSlots();
+
+    // ── 選擇日期 → 再次確認當日剩餘名額 ──
+    async function loadDayCapacity(date) {
+        slotInfo.style.display = 'block';
+        slotInfo.className = 'slot-info slot-load';
+        slotInfo.textContent = '查詢當日剩餘名額中...';
+        slotHint.textContent = '';
+        submitBtn.disabled = true;
+        try {
+            const res    = await fetch(`${GOOGLE_SHEET_URL}?action=checkSlot&date=${date}`);
+            const result = await res.json();
+            if (result.status === "success") {
+                if (result.remaining > 0) {
+                    slotInfo.className = 'slot-info slot-ok';
+                    slotInfo.textContent = `上午場｜剩餘名額：${result.remaining} / ${result.capacity !== undefined ? result.capacity : CAPACITY} 位`;
+                    submitBtn.disabled = false;
+                } else {
+                    slotInfo.className = 'slot-info slot-full';
+                    slotInfo.textContent = '⚠ 此日期名額已額滿，請選擇其他日期';
+                    submitBtn.disabled = true;
+                    loadAllSlots();
+                }
+            } else {
+                slotInfo.className = 'slot-info slot-full';
+                slotInfo.textContent = '查詢失敗：' + result.message;
+            }
+        } catch (err) {
+            slotInfo.className = 'slot-info slot-full';
+            slotInfo.textContent = '網路連線錯誤，請重新選擇日期';
+            slotHint.textContent = '' + err;
+        }
+    }
+
+    dateSelect.addEventListener('change', () => {
+        const date = dateSelect.value;
+        if (!date) {
+            slotInfo.style.display = 'none';
+            submitBtn.disabled = true;
+            return;
+        }
+        loadDayCapacity(date);
+    });
+
+    // ── 預約成功後顯示「健康檢查注意事項及流程表」彈出視窗 ──
+    const noticeModal        = document.getElementById('noticeModal');
+    const confirmBox         = document.getElementById('confirmBox');
+    const noticeModalCloseBtn = document.getElementById('noticeModalCloseBtn');
+
+    function showNoticeModal(details) {
+        confirmBox.innerHTML = `
+            <div>✅ ${details.message}</div>
+            <div>姓名：${details.name}（代號：${details.code}）</div>
+            <div>預約日期：${details.date}（${SLOT_VALUE}）</div>
+            <div>檢查項目：${details.items.join('、')}</div>
+        `;
+        noticeModal.classList.add('show');
+    }
+
+    function closeNoticeModal() {
+        noticeModal.classList.remove('show');
+    }
+
+    noticeModalCloseBtn.addEventListener('click', closeNoticeModal);
+    noticeModal.addEventListener('click', (e) => {
+        if (e.target === noticeModal) closeNoticeModal();
+    });
+
+    // ── 送出表單 ──
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn      = document.getElementById('submitBtn');
+        const code     = document.getElementById('empCode').value.trim();
+        const name     = document.getElementById('empName').value.trim();
+        const idnum    = document.getElementById('idnum').value.trim();
+        const birth    = document.getElementById('birth').value;
+        const genderEl = document.querySelector('input[name="gender"]:checked');
+        const gender   = genderEl ? genderEl.value : '';
+        const phone    = document.getElementById('phone').value.trim();
+        const email    = document.getElementById('email').value.trim();
+        const group    = groupSelect.value;
+        const dept     = deptSelect.value;
+        const date     = dateSelect.value;
+        const items    = Array.from(document.querySelectorAll('input[name="items"]:checked')).map(cb => cb.value);
+
+        if (!code)         { alert("請填寫姓名代號"); return; }
+        if (!name)         { alert("請填寫姓名"); return; }
+        if (!idnum)        { alert("請填寫身分證字號"); return; }
+        if (!birth)        { alert("請填寫出生年月日"); return; }
+        if (!gender)       { alert("請選擇性別"); return; }
+        if (!phone)        { alert("請填寫行動電話"); return; }
+        if (!email)        { alert("請填寫電子郵件"); return; }
+        if (!group)        { alert("請選擇組別"); return; }
+        if (!dept)         { alert("請選擇課別"); return; }
+        if (!items.length) { alert("尚未取得檢查項目，請確認姓名代號與姓名皆已正確填寫並完成名單比對"); return; }
+        if (!date)         { alert("請選擇預約日期"); return; }
+
+        btn.disabled  = true;
+        btn.innerText = "預約資料送出中，請稍候...";
+
+        try {
+            const res    = await fetch(GOOGLE_SHEET_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    code, name, idnum, birth, gender, phone, email,
+                    group, dept, items, date, slot: SLOT_VALUE
+                })
+            });
+            const result = await res.json();
+
+            if (result.status === "success") {
+                showNoticeModal({ message: result.message, name, code, date, items });
+                document.getElementById('bookingForm').reset();
+                deptSelect.disabled = true;
+                deptSelect.innerHTML = '<option value="">請先選擇組別</option>';
+                slotInfo.style.display = 'none';
+                slotHint.textContent = '';
+                rosterHint.style.color = '#f57c00';
+                rosterHint.textContent = '請先填寫姓名代號與姓名，系統將自動帶出應施作的檢查項目';
+                lastRosterQuery = '';
+                currentItemRestriction = false;
+                btn.disabled = true;
+                loadAllSlots();
+            } else if (result.status === "notfound") {
+                // 人員不在本次應受檢名單內
+                alert("⚠ " + result.message);
+            } else {
+                alert("發生錯誤：" + result.message);
+                if (date) loadDayCapacity(date);
+            }
+        } catch (err) {
+            alert("網路連線錯誤，請重試：" + err);
+        } finally {
+            btn.innerText = "送出預約";
+        }
+    });
+
+    // ── 依姓名代號查詢預約紀錄 ──
+    const queryBtn    = document.getElementById('queryBtn');
+    const queryResult = document.getElementById('queryResult');
+
+    queryBtn.addEventListener('click', async () => {
+        const q = document.getElementById('queryCode').value.trim();
+        if (!q) { alert("請輸入姓名代號或姓名"); return; }
+
+        queryBtn.disabled = true;
+        queryResult.innerHTML = '<div class="query-empty">查詢中...</div>';
+
+        try {
+            const res    = await fetch(`${GOOGLE_SHEET_URL}?action=queryByCode&q=${encodeURIComponent(q)}`);
+            const result = await res.json();
+
+            if (result.status === "success") {
+                let html = '<table><tr><th>姓名</th><th>預約日期</th><th>時段</th><th>檢查項目</th></tr>';
+                result.records.forEach(r => {
+                    html += `<tr><td>${r.name}</td><td>${r.date}</td><td>${r.slot}</td><td>${r.items}</td></tr>`;
+                });
+                html += '</table>';
+                queryResult.innerHTML = html;
+            } else {
+                queryResult.innerHTML = `<div class="query-empty">${result.message}</div>`;
+            }
+        } catch (err) {
+            queryResult.innerHTML = `<div class="query-empty">查詢失敗，請重試：${err}</div>`;
+        } finally {
+            queryBtn.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
